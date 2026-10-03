@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>StreamDesk — HLS Player</title>
+  <meta name="description" content="A browser-based HLS player for streams you are authorized to access.">
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: light-dark(#f4f6fa, #0b1020);
+      --panel: light-dark(#ffffff, #131b2e);
+      --panel-2: light-dark(#eef2f8, #19243a);
+      --text: light-dark(#172033, #eef3ff);
+      --muted: light-dark(#647089, #9aa8c2);
+      --border: light-dark(#dce3ee, #2a3852);
+      --accent: light-dark(#3457e5, #8aa0ff);
+      --accent-text: light-dark(#ffffff, #0b1020);
+      --danger: light-dark(#b42336, #ff8794);
+      --success: light-dark(#16794a, #70dfaa);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .shell { max-width: 1120px; margin: 0 auto; padding: 32px 20px 48px; }
+    header { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 28px; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .logo { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; color: white; background: linear-gradient(135deg, #5474ff, #8b5cf6); font-size: 21px; font-weight: 800; }
+    h1, h2, p { margin-top: 0; }
+    h1 { margin-bottom: 2px; font-size: clamp(23px, 3vw, 30px); letter-spacing: -.04em; }
+    .subtitle, .muted { color: var(--muted); }
+    .subtitle { margin: 0; font-size: 13px; }
+    .pill { padding: 6px 10px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, .85fr); gap: 20px; align-items: start; }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
+    .card-body { padding: 20px; }
+    .video-wrap { position: relative; background: #05070c; aspect-ratio: 16 / 9; display: grid; place-items: center; }
+    video { display: block; width: 100%; height: 100%; max-height: 66vh; background: #05070c; }
+    .video-empty { position: absolute; text-align: center; padding: 24px; color: #b7c2da; pointer-events: none; }
+    .play-icon { font-size: 36px; line-height: 1.2; margin-bottom: 10px; }
+    h2 { font-size: 16px; margin-bottom: 14px; letter-spacing: -.01em; }
+    label { display: block; font-size: 13px; font-weight: 650; margin: 14px 0 7px; }
+    input, select, button { font: inherit; }
+    input { width: 100%; min-width: 0; color: var(--text); background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 11px 12px; outline-offset: 2px; }
+    input:focus { border-color: var(--accent); outline: 2px solid color-mix(in srgb, var(--accent) 25%, transparent); }
+    .actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 14px; }
+    button, .button-link { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 13px; color: var(--text); background: var(--panel-2); font-weight: 650; cursor: pointer; text-decoration: none; }
+    button.primary { background: var(--accent); color: var(--accent-text); border-color: transparent; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .hint { color: var(--muted); font-size: 12px; margin: 9px 0 0; }
+    .status { margin-top: 14px; border-radius: 10px; padding: 10px 12px; background: var(--panel-2); color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+    .status[data-kind="error"] { color: var(--danger); }
+    .status[data-kind="success"] { color: var(--success); }
+    .side-card + .side-card { margin-top: 16px; }
+    .kv { display: flex; justify-content: space-between; gap: 16px; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .kv:last-child { border-bottom: 0; }
+    .kv span:first-child { color: var(--muted); }
+    .kv strong { text-align: right; overflow-wrap: anywhere; }
+    .log { height: 210px; overflow: auto; background: light-dark(#f7f9fc, #0b1120); border: 1px solid var(--border); border-radius: 10px; padding: 10px; font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .log-line { margin-bottom: 5px; }
+    .log-line.error { color: var(--danger); }
+    .log-line.ok { color: var(--success); }
+    .footnote { font-size: 12px; color: var(--muted); margin: 20px 2px 0; }
+    @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } .shell { padding: 22px 14px 36px; } header { align-items: flex-start; } .pill { display: none; } }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"></script>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true">▶</div>
+        <div>
+          <h1>StreamDesk</h1>
+          <p class="subtitle">HLS player · stream diagnostics</p>
+        </div>
+      </div>
+      <span class="pill">Browser-based · no account</span>
+    </header>
+
+    <div class="layout">
+      <section class="card">
+        <div class="video-wrap">
+          <video id="video" controls playsinline preload="metadata" crossorigin="anonymous"></video>
+          <div class="video-empty" id="emptyState">
+            <div class="play-icon">▷</div>
+            <strong>Your stream will appear here</strong>
+            <div class="muted">Paste an authorized .m3u8 playlist below</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <h2>Open a stream</h2>
+          <form id="playForm">
+            <label for="streamUrl">HLS playlist URL (.m3u8)</label>
+            <input id="streamUrl" type="url" inputmode="url" placeholder="https://example.com/path/master.m3u8" autocomplete="url" required>
+            <div class="actions">
+              <button class="primary" type="submit">▶ Play stream</button>
+              <button type="button" id="stopBtn">Stop</button>
+              <button type="button" id="clearBtn">Clear log</button>
+            </div>
+          </form>
+          <div class="status" id="status" role="status" aria-live="polite">Ready. Enter a playlist URL to begin.</div>
+          <p class="hint">Only use streams you own or have permission to access. This page does not bypass login, tokens, DRM, or source-site restrictions.</p>
+        </div>
+      </section>
+
+      <aside>
+        <section class="card side-card">
+          <div class="card-body">
+            <h2>Stream details</h2>
+            <div class="kv"><span>Playback engine</span><strong id="engine">Not started</strong></div>
+            <div class="kv"><span>Resolution</span><strong id="resolution">—</strong></div>
+            <div class="kv"><span>Duration</span><strong id="duration">—</strong></div>
+            <div class="kv"><span>Current time</span><strong id="currentTime">00:00</strong></div>
+            <div class="kv"><span>Buffered</span><strong id="buffered">—</strong></div>
+            <div class="kv"><span>Quality</span><strong id="quality">Auto</strong></div>
+            <label for="qualitySelect">Playback quality</label>
+            <select id="qualitySelect" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--panel);color:var(--text)" disabled>
+              <option value="-1">Auto</option>
+            </select>
+          </div>
+        </section>
+
+        <section class="card side-card">
+          <div class="card-body">
+            <h2>Playlist download</h2>
+            <p class="muted" style="font-size:13px">Save the playlist text for inspection or offline use where permitted. This does not package the video segments into a single media file.</p>
+            <div class="actions">
+              <button type="button" id="downloadBtn" disabled>↓ Download .m3u8</button>
+            </div>
+            <p class="hint">Cross-origin servers may block browser downloads. Use the provider's official download option when available.</p>
+          </div>
+        </section>
+
+        <section class="card side-card">
+          <div class="card-body">
+            <h2>Diagnostics</h2>
+            <div id="log" class="log" aria-label="Stream diagnostics log"><div class="log-line">Waiting for a playlist URL…</div></div>
+          </div>
+        </section>
+      </aside>
+    </div>
+    <p class="footnote">StreamDesk is a client-side demo. Playback depends on browser codec support, CORS headers, playlist availability, and access permissions. Never paste private session tokens into a public or shared device.</p>
+  </main>
+
+  <script>
+    (() => {
+      const $ = (id) => document.getElementById(id);
+      const video = $("video");
+      const urlInput = $("streamUrl");
+      const status = $("status");
+      const logBox = $("log");
+      const qualitySelect = $("qualitySelect");
+      const downloadBtn = $("downloadBtn");
+      let hls = null;
+      let currentPlaylistUrl = "";
+      let nativeHls = false;
+
+      function log(message, kind = "") {
+        const row = document.createElement("div");
+        row.className = `log-line ${kind}`;
+        row.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        logBox.appendChild(row);
+        logBox.scrollTop = logBox.scrollHeight;
+      }
+      function setStatus(message, kind = "") {
+        status.textContent = message;
+        status.dataset.kind = kind;
+      }
+      function fmtTime(seconds) {
+        if (!Number.isFinite(seconds) || seconds < 0) return "—";
+        const s = Math.floor(seconds);
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const sec = s % 60;
+        return h ? `${h}:${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}` : `${m}:${String(sec).padStart(2,"0")}`;
+      }
+      function teardown() {
+        if (hls) { hls.destroy(); hls = null; }
+        video.pause();
+        video.removeAttribute("src");
+        video.load();
+        nativeHls = false;
+        $("engine").textContent = "Not started";
+        $("resolution").textContent = "—";
+        $("duration").textContent = "—";
+        $("buffered").textContent = "—";
+        $("quality").textContent = "Auto";
+        qualitySelect.innerHTML = '<option value="-1">Auto</option>';
+        qualitySelect.disabled = true;
+        downloadBtn.disabled = true;
+      }
+      function validateUrl(raw) {
+        let u;
+        try { u = new URL(raw); } catch { throw new Error("Enter a valid absolute URL."); }
+        if (!["https:", "http:"].includes(u.protocol)) throw new Error("Only HTTP(S) playlist URLs are supported.");
+        if (!/\.m3u8(?:$|[?#])/i.test(u.href)) log("URL does not end in .m3u8; attempting playback anyway.");
+        return u.href;
+      }
+      function startPlayback(raw) {
+        let url;
+        try { url = validateUrl(raw.trim()); }
+        catch (e) { setStatus(e.message, "error"); log(e.message, "error"); return; }
+        teardown();
+        currentPlaylistUrl = url;
+        $("emptyState").style.display = "none";
+        setStatus("Loading playlist…");
+        log(`Opening ${url}`);
+        downloadBtn.disabled = false;
+
+        if (window.Hls && Hls.isSupported()) {
+          hls = new Hls({ enableWorker: true, capLevelToPlayerSize: true });
+          $("engine").textContent = "hls.js";
+          hls.on(Hls.Events.MEDIA_ATTACHED, () => log("Media element attached."));
+          hls.on(Hls.Events.MANIFEST_LOADING, () => log("Requesting HLS manifest…"));
+          hls.on(Hls.Events.MANIFEST_PARSED, (_event, data) => {
+            const levels = data.levels || [];
+            qualitySelect.innerHTML = '<option value="-1">Auto</option>';
+            levels.forEach((level, index) => {
+              const option = document.createElement("option");
+              option.value = String(index);
+              option.textContent = `${level.height ? level.height + "p" : Math.round((level.bitrate || 0) / 1000) + " kbps"}${level.bitrate ? " · " + Math.round(level.bitrate / 1000) + " kbps" : ""}`;
+              qualitySelect.appendChild(option);
+            });
+            qualitySelect.disabled = levels.length === 0;
+            log(`Manifest parsed; ${levels.length} quality level(s) found.`, "ok");
+            setStatus("Playlist loaded. Press Play if playback does not start automatically.", "success");
+            if (levels[0] && levels[0].height) $("resolution").textContent = `${levels[0].height}p available`;
+            video.play().catch(() => log("Autoplay was blocked; press the video Play button."));
+          });
+          hls.on(Hls.Events.LEVEL_SWITCHED, (_event, data) => {
+            const level = hls.levels[data.level];
+            if (level) {
+              $("quality").textContent = level.height ? `${level.height}p` : `${Math.round((level.bitrate || 0) / 1000)} kbps`;
+              if (level.height) $("resolution").textContent = `${video.videoWidth || "—"} × ${video.videoHeight || level.height}`;
+            }
+          });
+          hls.on(Hls.Events.ERROR, (_event, data) => {
+            const detail = `${data.type || "unknown"} / ${data.details || "no details"}${data.response?.code ? ` (HTTP ${data.response.code})` : ""}`;
+            log(`HLS error: ${detail}${data.fatal ? " [fatal]" : ""}`, data.fatal ? "error" : "");
+            if (data.fatal) {
+              setStatus(`Playback failed: ${detail}. Check CORS, URL expiry, access permissions, and the Network tab.`, "error");
+              if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                log("Network failure: verify the playlist and segment requests are reachable from this page.", "error");
+              } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+                log("Media failure: codec support or media corruption may be involved.", "error");
+                hls.recoverMediaError();
+              }
+            }
+          });
+          hls.loadSource(url);
+          hls.attachMedia(video);
+        } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+          nativeHls = true;
+          $("engine").textContent = "Native HLS";
+          video.src = url;
+          log("Using native browser HLS support.");
+          setStatus("Playlist assigned to native HLS player. Playback depends on source access and browser support.");
+          video.play().catch(() => log("Autoplay was blocked; press Play."));
+        } else {
+          $("engine").textContent = "Unsupported";
+          setStatus("This browser does not support HLS playback. Try a recent Safari or a browser with Media Source Extensions.", "error");
+          log("No compatible HLS playback engine found.", "error");
+        }
+      }
+
+      $("playForm").addEventListener("submit", (event) => {
+        event.preventDefault();
+        startPlayback(urlInput.value);
+      });
+      $("stopBtn").addEventListener("click", () => {
+        teardown();
+        $("emptyState").style.display = "";
+        setStatus("Playback stopped.");
+        log("Playback stopped by user.");
+      });
+      $("clearBtn").addEventListener("click", () => { logBox.replaceChildren(); log("Log cleared."); });
+      qualitySelect.addEventListener("change", () => {
+        if (!hls) return;
+        const value = Number(qualitySelect.value);
+        hls.currentLevel = value;
+        $("quality").textContent = value === -1 ? "Auto" : qualitySelect.options[qualitySelect.selectedIndex].textContent;
+        log(value === -1 ? "Quality set to Auto." : `Quality set to ${qualitySelect.options[qualitySelect.selectedIndex].textContent}.`);
+      });
+      downloadBtn.addEventListener("click", async () => {
+        if (!currentPlaylistUrl) return;
+        try {
+          setStatus("Fetching playlist text…");
+          const response = await fetch(currentPlaylistUrl, { mode: "cors", credentials: "omit" });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const text = await response.text();
+          if (!text.trimStart().startsWith("#EXTM3U")) throw new Error("Response is not an HLS playlist (#EXTM3U missing).");
+          const blob = new Blob([text], { type: "application/vnd.apple.mpegurl" });
+          const objectUrl = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = objectUrl;
+          a.download = "playlist.m3u8";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(objectUrl);
+          setStatus("Playlist downloaded. This file references stream segments; it is not a combined video file.", "success");
+          log("Playlist text downloaded.", "ok");
+        } catch (error) {
+          setStatus(`Playlist download failed: ${error.message}. The source may block cross-origin fetches (CORS).`, "error");
+          log(`Download failed: ${error.message}`, "error");
+        }
+      });
+      video.addEventListener("loadedmetadata", () => {
+        $("duration").textContent = fmtTime(video.duration);
+        if (video.videoWidth && video.videoHeight) $("resolution").textContent = `${video.videoWidth} × ${video.videoHeight}`;
+        log("Media metadata loaded.", "ok");
+      });
+      video.addEventListener("timeupdate", () => {
+        $("currentTime").textContent = fmtTime(video.currentTime);
+        if (video.buffered.length) {
+          const end = video.buffered.end(video.buffered.length - 1);
+          $("buffered").textContent = `${fmtTime(end)} buffered`;
+        }
+      });
+      video.addEventListener("playing", () => { setStatus("Playing.", "success"); log("Playback started.", "ok"); });
+      video.addEventListener("waiting", () => { setStatus("Buffering…"); log("Playback waiting for media data."); });
+      video.addEventListener("error", () => {
+        const code = video.error?.code;
+        const message = ({1:"Playback aborted.",2:"Network error.",3:"Media decoding error.",4:"Source not supported or inaccessible."})[code] || "Unknown media error.";
+        setStatus(message, "error");
+        log(message, "error");
+      });
+    })();
+  </script>
+</body>
+</html>
