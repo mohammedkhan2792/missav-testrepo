@@ -311,7 +311,8 @@
       }
 
       async function inspectPage(raw) {
-        const input = (raw || "").trim();
+        const input = String(raw || "").trim();
+
         if (!input) {
           setStatus("Paste a video page URL first.", "error");
           log("Inspect skipped: page URL is empty.", "error");
@@ -321,10 +322,12 @@
         let pageUrl;
         try {
           pageUrl = new URL(input);
-          if (!/^https?:$/.test(pageUrl.protocol)) throw new Error("Only HTTP(S) page URLs are supported.");
-        } catch (e) {
-          setStatus(e.message || "Enter a valid page URL.", "error");
-          log(e.message || "Invalid page URL.", "error");
+          if (!["http:", "https:"].includes(pageUrl.protocol)) {
+            throw new Error("Only HTTP(S) page URLs are supported.");
+          }
+        } catch (error) {
+          setStatus(error.message || "Enter a valid page URL.", "error");
+          log(error.message || "Invalid page URL.", "error");
           return;
         }
 
@@ -341,13 +344,16 @@
           });
 
           if (!response.ok) throw new Error("HTTP " + response.status);
+
           const html = await response.text();
-          if (!html) throw new Error("The page returned an empty response.");
+          if (!html.trim()) throw new Error("The page returned an empty response.");
 
           const candidates = new Set();
-          const addCandidate = (value) => {
+
+          function addCandidate(value) {
             if (!value) return;
-            let valueText = String(value)
+
+            let cleaned = String(value)
               .replace(/\\\//g, "/")
               .replace(/&amp;/gi, "&")
               .replace(/&quot;/gi, '"')
@@ -355,41 +361,56 @@
               .trim();
 
             try {
-              const absolute = new URL(valueText, pageUrl.href).href;
-              if (/\.m3u8(?:$|[?#])/i.test(absolute)) candidates.add(absolute);
+              const absolute = new URL(cleaned, pageUrl.href).href;
+              if (/\.m3u8(?:$|[?#])/i.test(absolute)) {
+                candidates.add(absolute);
+              }
             } catch (_) {}
-          };
+          }
 
-          // Look through common HTML attributes.
-          const attrPattern = /(?:src|href|content|data-src|data-url|data-file|data-stream|data-playlist)\s*=\s*["']([^"']+)["']/gi;
-          let match;
-          while ((match = attrPattern.exec(html)) !== null) addCandidate(match[1]);
+          // Parse normal HTML attributes.
+          const doc = new DOMParser().parseFromString(html, "text/html");
+          doc.querySelectorAll("*").forEach((element) => {
+            for (const attr of Array.from(element.attributes)) {
+              if (/^(src|href|content|data-src|data-url|data-file|data-stream|data-playlist)$/i.test(attr.name)) {
+                addCandidate(attr.value);
+              }
+            }
+          });
 
-          // Look for absolute/escaped playlist URLs anywhere in inline scripts and markup.
-          const urlPattern = /https?:\/\/[^\s"'<>\]+?\.m3u8(?:[?#][^\s"'<>\]*)?/gi;
-          while ((match = urlPattern.exec(html)) !== null) addCandidate(match[0]);
+          // Scan the raw page for playlist URLs in inline scripts/markup.
+          const absoluteMatches = html.match(/https?:\\/\\/[^\\s"'<>]+\\.m3u8(?:[?#][^\\s"'<>]*)?/gi) || [];
+          absoluteMatches.forEach(addCandidate);
 
-          // Look for protocol-relative playlist URLs.
-          const protocolRelativePattern = /\/\/[^\s"'<>\]+?\.m3u8(?:[?#][^\s"'<>\]*)?/gi;
-          while ((match = protocolRelativePattern.exec(html)) !== null) addCandidate("https:" + match[0]);
+          const protocolMatches = html.match(/\\/\\/[^\\s"'<>]+\\.m3u8(?:[?#][^\\s"'<>]*)?/gi) || [];
+          protocolMatches.forEach((value) => addCandidate("https:" + value));
 
           const list = Array.from(candidates);
+
           $("corsStatus").textContent = "Allowed";
           $("variantCount").textContent = String(list.length);
 
           if (!list.length) {
             $("playlistType").textContent = "Not found";
             setStatus("Page loaded, but no openly exposed .m3u8 URL was found.", "error");
-            log("No .m3u8 reference found in the returned HTML.", "error");
-            log("A player may be building its stream URL dynamically, or the playlist may not be exposed in the page source.", "error");
+            log("No .m3u8 reference was found in the page HTML.", "error");
+            log("The site's player may construct the stream dynamically or keep the playlist outside the returned HTML.", "error");
             return;
           }
 
           urlInput.value = list[0];
-          $("playlistType").textContent = list.length === 1 ? "Page-exposed URL" : list.length + " page-exposed URLs";
+          $("playlistType").textContent = list.length === 1
+            ? "Page-exposed URL"
+            : list.length + " page-exposed URLs";
+
           log("Found " + list.length + " playlist reference(s).", "ok");
-          list.slice(0, 10).forEach((url, index) => log("Playlist " + (index + 1) + ": " + url));
-          if (list.length > 10) log("…and " + (list.length - 10) + " more.");
+          list.slice(0, 10).forEach((url, index) => {
+            log("Playlist " + (index + 1) + ": " + url);
+          });
+
+          if (list.length > 10) {
+            log("…and " + (list.length - 10) + " more.");
+          }
 
           setStatus("Playlist found. Running playlist diagnostics…", "success");
           await diagnose(list[0]);
