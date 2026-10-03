@@ -21,8 +21,8 @@
 <h2>Find a playlist from a page</h2>
 <label for="pageUrl">Video page URL</label>
 <input id="pageUrl" type="url" placeholder="https://example.com/video/...">
-<div class="actions"><button class="primary" id="inspectBtn" type="button">🔎 Inspect page</button><button id="openPageBtn" type="button">↗ Open page</button></div>
-<p class="hint">Inspection reads the page HTML only when the target site grants CORS access. If inspection is blocked, use Open page and paste an openly accessible <code>.m3u8</code> URL below. This tool does not bypass login, signed URLs, DRM, anti-hotlinking, or other access controls.</p>
+<div class="actions"><button class="primary" id="inspectBtn" type="button">🔎 Inspect page</button><button id="openPageBtn" type="button">↗ Open page</button><button id="openExternalBtn" type="button">↗ New tab</button></div>
+<p class="hint">Inspection reads page HTML only when the target site grants CORS access. If CORS is blocked, Inspect will automatically load the page in the built-in browser instead. The browser can run the site's own player when framing is allowed, but it cannot copy a cross-origin site's internal stream URL into this app. This tool does not bypass login, signed URLs, DRM, anti-hotlinking, or other access controls.</p>
 <div class="status" id="pageAccessStatus">Page access: not tested.</div>
 <div class="browser" id="browserPanel">
   <div class="browserbar">
@@ -31,7 +31,7 @@
   </div>
   <iframe id="siteFrame" title="External video page" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
 </div>
-<p class="hint">The site browser can display a page only if that site allows framing. Cross-origin pages remain isolated from this app, so their internal player and stream URL cannot be read or copied into this player unless the site explicitly exposes them. citeturn0search0turn0search1</p>
+<p class="hint">The site browser can display a page only if that site allows framing. Cross-origin pages remain isolated from this app, so their internal player and stream URL cannot be read or copied into this player unless the site explicitly exposes them.</p>
 <h2 style="margin-top:22px">Open a stream</h2>
 <form id="playForm">
 <label for="streamUrl">HLS playlist URL (.m3u8)</label>
