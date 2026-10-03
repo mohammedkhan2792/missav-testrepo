@@ -215,29 +215,29 @@
         catch (e) { setStatus(e.message, "error"); log(e.message, "error"); return; }
         setStatus("Fetching playlist for diagnostics…");
         log(`Diagnosing ${url}`);
-        $(\"corsStatus\").textContent = "Testing…";
+        $("corsStatus").textContent = "Testing…";
         try {
           const response = await fetch(url, { mode: "cors", credentials: "omit", cache: "no-store" });
-          $(\"corsStatus\").textContent = response.ok ? "Allowed" : `HTTP ${response.status}`;
+          $("corsStatus").textContent = response.ok ? "Allowed" : `HTTP ${response.status}`;
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           const text = await response.text();
           if (!text.trimStart().startsWith("#EXTM3U")) throw new Error("Response is not an HLS playlist (#EXTM3U missing).");
           const isMaster = /#EXT-X-STREAM-INF:/i.test(text);
-          const variants = [...text.matchAll(/#EXT-X-STREAM-INF:([^\\n\\r]*)[\\n\\r]+([^\\n\\r]+)/gi)].map(m => {
+          const variants = [...text.matchAll(/#EXT-X-STREAM-INF:([^\n\r]*)[\n\r]+([^\n\r]+)/gi)].map(m => {
             const attrs = m[1];
-            const height = (attrs.match(/RESOLUTION=\\d+x(\\d+)/i) || [])[1];
-            const bandwidth = (attrs.match(/(?:AVERAGE-BANDWIDTH|BANDWIDTH)=(\\d+)/i) || [])[1];
+            const height = (attrs.match(/RESOLUTION=\d+x(\d+)/i) || [])[1];
+            const bandwidth = (attrs.match(/(?:AVERAGE-BANDWIDTH|BANDWIDTH)=(\d+)/i) || [])[1];
             return { height: height ? Number(height) : null, bandwidth: bandwidth ? Number(bandwidth) : null };
           });
-          $(\"playlistType\").textContent = isMaster ? "Master / adaptive" : "Media playlist";
-          $(\"variantCount\").textContent = isMaster ? String(variants.length) : "1";
+          $("playlistType").textContent = isMaster ? "Master / adaptive" : "Media playlist";
+          $("variantCount").textContent = isMaster ? String(variants.length) : "1";
           log(`HLS playlist fetched successfully; ${isMaster ? variants.length + " variant(s)" : "media playlist"}.`, "ok");
           if (variants.length) log("Variants: " + variants.map(v => v.height ? `${v.height}p` : (v.bandwidth ? Math.round(v.bandwidth/1000) + " kbps" : "variant")).join(", "), "ok");
           setStatus("Diagnostics complete. Playlist access succeeded; segment requests can still have separate access or CORS requirements.", "success");
         } catch (error) {
-          $(\"corsStatus\").textContent = "Blocked / failed";
-          $(\"playlistType\").textContent = "Unknown";
-          $(\"variantCount\").textContent = "—";
+          $("corsStatus").textContent = "Blocked / failed";
+          $("playlistType").textContent = "Unknown";
+          $("variantCount").textContent = "—";
           setStatus(`Diagnostics failed: ${error.message}. Common causes include CORS, authentication, expiry, or network policy.`, "error");
           log(`Diagnostic failure: ${error.message}`, "error");
         }
@@ -348,7 +348,7 @@
           const addCandidate = (value) => {
             if (!value) return;
             let valueText = String(value)
-              .replace(/\\\\\\//g, "/")
+              .replace(/\\\//g, "/")
               .replace(/&amp;/gi, "&")
               .replace(/&quot;/gi, '"')
               .replace(/&#x2F;/gi, "/")
@@ -356,21 +356,21 @@
 
             try {
               const absolute = new URL(valueText, pageUrl.href).href;
-              if (/\\.m3u8(?:$|[?#])/i.test(absolute)) candidates.add(absolute);
+              if (/\.m3u8(?:$|[?#])/i.test(absolute)) candidates.add(absolute);
             } catch (_) {}
           };
 
           // Look through common HTML attributes.
-          const attrPattern = /(?:src|href|content|data-src|data-url|data-file|data-stream|data-playlist)\\s*=\\s*["']([^"']+)["']/gi;
+          const attrPattern = /(?:src|href|content|data-src|data-url|data-file|data-stream|data-playlist)\s*=\s*["']([^"']+)["']/gi;
           let match;
           while ((match = attrPattern.exec(html)) !== null) addCandidate(match[1]);
 
           // Look for absolute/escaped playlist URLs anywhere in inline scripts and markup.
-          const urlPattern = /https?:\\/\\/[^\\s"'<>\\]+?\\.m3u8(?:[?#][^\\s"'<>\\]*)?/gi;
+          const urlPattern = /https?:\/\/[^\s"'<>\]+?\.m3u8(?:[?#][^\s"'<>\]*)?/gi;
           while ((match = urlPattern.exec(html)) !== null) addCandidate(match[0]);
 
           // Look for protocol-relative playlist URLs.
-          const protocolRelativePattern = /\\/\\/[^\\s"'<>\\]+?\\.m3u8(?:[?#][^\\s"'<>\\]*)?/gi;
+          const protocolRelativePattern = /\/\/[^\s"'<>\]+?\.m3u8(?:[?#][^\s"'<>\]*)?/gi;
           while ((match = protocolRelativePattern.exec(html)) !== null) addCandidate("https:" + match[0]);
 
           const list = Array.from(candidates);
@@ -403,7 +403,18 @@
         }
       }
 
-      $("inspectBtn").addEventListener("click", () => inspectPage($("pageUrl").value));
+      $("inspectBtn").addEventListener("click", (event) => {
+        event.preventDefault();
+        log("Inspect button clicked.");
+        inspectPage($("pageUrl").value);
+      });
+      $("pageUrl").addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          log("Inspect started from Enter key.");
+          inspectPage($("pageUrl").value);
+        }
+      });
 
       $("diagnoseBtn").addEventListener("click", () => diagnose(urlInput.value));
 
