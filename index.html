@@ -95,6 +95,7 @@
             <input id="streamUrl" type="url" inputmode="url" placeholder="https://example.com/path/master.m3u8" autocomplete="url" required>
             <div class="actions">
               <button class="primary" type="submit">▶ Play stream</button>
+              <button type="button" id="diagnoseBtn">🔎 Diagnose</button>
               <button type="button" id="stopBtn">Stop</button>
               <button type="button" id="clearBtn">Clear log</button>
             </div>
@@ -114,6 +115,9 @@
             <div class="kv"><span>Current time</span><strong id="currentTime">00:00</strong></div>
             <div class="kv"><span>Buffered</span><strong id="buffered">—</strong></div>
             <div class="kv"><span>Quality</span><strong id="quality">Auto</strong></div>
+            <div class="kv"><span>Playlist</span><strong id="playlistType">—</strong></div>
+            <div class="kv"><span>CORS fetch</span><strong id="corsStatus">Not tested</strong></div>
+            <div class="kv"><span>Variants</span><strong id="variantCount">—</strong></div>
             <label for="qualitySelect">Playback quality</label>
             <select id="qualitySelect" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--panel);color:var(--text)" disabled>
               <option value="-1">Auto</option>
@@ -197,6 +201,40 @@
         if (!/\.m3u8(?:$|[?#])/i.test(u.href)) log("URL does not end in .m3u8; attempting playback anyway.");
         return u.href;
       }
+      async function diagnose(raw) {
+        let url;
+        try { url = validateUrl(raw.trim()); }
+        catch (e) { setStatus(e.message, "error"); log(e.message, "error"); return; }
+        setStatus("Fetching playlist for diagnostics…");
+        log(`Diagnosing ${url}`);
+        $(\"corsStatus\").textContent = "Testing…";
+        try {
+          const response = await fetch(url, { mode: "cors", credentials: "omit", cache: "no-store" });
+          $(\"corsStatus\").textContent = response.ok ? "Allowed" : `HTTP ${response.status}`;
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const text = await response.text();
+          if (!text.trimStart().startsWith("#EXTM3U")) throw new Error("Response is not an HLS playlist (#EXTM3U missing).");
+          const isMaster = /#EXT-X-STREAM-INF:/i.test(text);
+          const variants = [...text.matchAll(/#EXT-X-STREAM-INF:([^\\n\\r]*)[\\n\\r]+([^\\n\\r]+)/gi)].map(m => {
+            const attrs = m[1];
+            const height = (attrs.match(/RESOLUTION=\\d+x(\\d+)/i) || [])[1];
+            const bandwidth = (attrs.match(/(?:AVERAGE-BANDWIDTH|BANDWIDTH)=(\\d+)/i) || [])[1];
+            return { height: height ? Number(height) : null, bandwidth: bandwidth ? Number(bandwidth) : null };
+          });
+          $(\"playlistType\").textContent = isMaster ? "Master / adaptive" : "Media playlist";
+          $(\"variantCount\").textContent = isMaster ? String(variants.length) : "1";
+          log(`HLS playlist fetched successfully; ${isMaster ? variants.length + " variant(s)" : "media playlist"}.`, "ok");
+          if (variants.length) log("Variants: " + variants.map(v => v.height ? `${v.height}p` : (v.bandwidth ? Math.round(v.bandwidth/1000) + " kbps" : "variant")).join(", "), "ok");
+          setStatus("Diagnostics complete. Playlist access succeeded; segment requests can still have separate access or CORS requirements.", "success");
+        } catch (error) {
+          $(\"corsStatus\").textContent = "Blocked / failed";
+          $(\"playlistType\").textContent = "Unknown";
+          $(\"variantCount\").textContent = "—";
+          setStatus(`Diagnostics failed: ${error.message}. Common causes include CORS, authentication, expiry, or network policy.`, "error");
+          log(`Diagnostic failure: ${error.message}`, "error");
+        }
+      }
+
       function startPlayback(raw) {
         let url;
         try { url = validateUrl(raw.trim()); }
@@ -263,6 +301,8 @@
           log("No compatible HLS playback engine found.", "error");
         }
       }
+
+      $("diagnoseBtn").addEventListener("click", () => diagnose(urlInput.value));
 
       $("playForm").addEventListener("submit", (event) => {
         event.preventDefault();
