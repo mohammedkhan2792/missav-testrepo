@@ -289,12 +289,24 @@
     const value = $("pageUrl").value.trim();
     try {
       const url = validatePageUrl(value);
-      window.open(url.href, "_blank", "noopener,noreferrer");
-      log("Opened page in a new tab.", "ok");
+      $("siteFrame").src = url.href;
+      $("browserOrigin").textContent = url.origin;
+      $("pageAccessStatus").textContent = "Page access: embedded navigation started. Inspecting its DOM is restricted cross-origin.";
+      log("Loaded the video page in the site browser: " + url.href, "ok");
+      setStatus("Video page opened in the embedded browser. If the site permits framing, its own player can run there.", "success");
     } catch (error) {
       setStatus(error.message || "Enter a valid HTTP(S) page URL first.", "error");
       log(error.message || "Enter a valid HTTP(S) page URL first.", "error");
     }
+  });
+
+  $("siteFrame").addEventListener("load", () => {
+    log("Embedded page navigation completed.", "ok");
+  });
+
+  $("siteFrame").addEventListener("error", () => {
+    log("Embedded page failed to load.", "error");
+    setStatus("The site refused or failed to load in the embedded browser.", "error");
   });
 
   $("inspectBtn").addEventListener("click", (event) => {
