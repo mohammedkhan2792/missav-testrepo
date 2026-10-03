@@ -89,7 +89,15 @@
           </div>
         </div>
         <div class="card-body">
-          <h2>Open a stream</h2>
+          <h2>Find a playlist from a page</h2>
+          <label for="pageUrl">Video page URL</label>
+          <input id="pageUrl" type="url" inputmode="url" placeholder="https://example.com/video/..." autocomplete="url">
+          <div class="actions">
+            <button class="primary" type="button" id="inspectBtn">🔎 Inspect page</button>
+          </div>
+          <p class="hint">The inspector only reads HTML that the browser is allowed to fetch and looks for openly exposed HLS playlist references. It does not bypass login, anti-hotlinking, signed URLs, DRM, or other access controls.</p>
+
+          <h2 style="margin-top:22px">Open a stream</h2>
           <form id="playForm">
             <label for="streamUrl">HLS playlist URL (.m3u8)</label>
             <input id="streamUrl" type="url" inputmode="url" placeholder="https://example.com/path/master.m3u8" autocomplete="url" required>
@@ -301,6 +309,76 @@
           log("No compatible HLS playback engine found.", "error");
         }
       }
+
+      async function inspectPage(raw) {
+        let pageUrl;
+        try {
+          pageUrl = new URL(raw.trim());
+          if (!["https:", "http:"].includes(pageUrl.protocol)) throw new Error("Only HTTP(S) page URLs are supported.");
+        } catch (e) {
+          setStatus(e.message || "Enter a valid video page URL.", "error");
+          log(e.message || "Invalid page URL.", "error");
+          return;
+        }
+
+        setStatus("Fetching page HTML for public playlist references…");
+        log(`Inspecting page HTML: ${pageUrl.href}`);
+        try {
+          const response = await fetch(pageUrl.href, {
+            mode: "cors",
+            credentials: "omit",
+            cache: "no-store",
+            redirect: "follow"
+          });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const html = await response.text();
+          if (!html || html.length < 20) throw new Error("The page returned no usable HTML.");
+
+          const candidates = new Set();
+          const addCandidate = (value) => {
+            if (!value) return;
+            let decoded = value.replace(/\\\\\\\//g, "/").replace(/&amp;/gi, "&").replace(/&quot;/gi, '"');
+            decoded = decoded.replace(/^['"]|['"]$/g, "");
+            try {
+              const absolute = new URL(decoded, pageUrl.href).href;
+              if (/\\.m3u8(?:$|[?#])/i.test(absolute)) candidates.add(absolute);
+            } catch {}
+          };
+
+          const attrRe = /(?:src|href|content|data-src|data-url|data-file|data-stream|data-playlist)\\s*=\\s*["']([^"']+)["']/gi;
+          for (const match of html.matchAll(attrRe)) addCandidate(match[1]);
+
+          const quotedRe = /(?:https?:\\/\\/|\\/\\/)[^\\s"'<>\\\\]+?\\.m3u8(?:\\?[^\\s"'<>\\\\]*)?/gi;
+          for (const match of html.matchAll(quotedRe)) addCandidate(match[0]);
+
+          const rawM3u8Re = /(?:https?:\\/\\/)?[^\\s"'<>\\\\]+?\\.m3u8(?:\\?[^\\s"'<>\\\\]*)?/gi;
+          for (const match of html.matchAll(rawM3u8Re)) addCandidate(match[0]);
+
+          const list = [...candidates];
+          $("variantCount").textContent = list.length ? String(list.length) : "0";
+          if (!list.length) {
+            setStatus("No openly exposed .m3u8 reference was found in the fetched HTML.", "error");
+            log("No playlist URL found. The page may load its player data dynamically, block cross-origin HTML reads, or require access that the browser cannot expose.", "error");
+            return;
+          }
+
+          urlInput.value = list[0];
+          $("playlistType").textContent = list.length === 1 ? "Page-exposed URL" : `${list.length} page-exposed URLs`;
+          $("corsStatus").textContent = "Page fetch allowed";
+          log(`Found ${list.length} openly exposed HLS playlist reference(s).`, "ok");
+          list.slice(0, 10).forEach((url, i) => log(`Playlist ${i + 1}: ${url}`));
+          if (list.length > 10) log(`…and ${list.length - 10} more not shown.`);
+          setStatus(`Found ${list.length} playlist URL(s). The first one is ready to play/diagnose.`, "success");
+          await diagnose(list[0]);
+        } catch (error) {
+          $("corsStatus").textContent = "Page fetch blocked";
+          setStatus(`Page inspection failed: ${error.message}. Browser CORS rules may prevent reading the page HTML.`, "error");
+          log(`Page inspection failed: ${error.message}`, "error");
+          log("If you control the page, enable CORS for this app origin or host the inspector on the same origin. No proxy/bypass is used here.", "error");
+        }
+      }
+
+      $("inspectBtn").addEventListener("click", () => inspectPage($("pageUrl").value));
 
       $("diagnoseBtn").addEventListener("click", () => diagnose(urlInput.value));
 
