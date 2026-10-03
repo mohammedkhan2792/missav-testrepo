@@ -1,507 +1,55 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light dark">
-  <title>StreamDesk — HLS Player</title>
-  <meta name="description" content="A browser-based HLS player for streams you are authorized to access.">
-  <style>
-    :root {
-      color-scheme: light dark;
-      --bg: light-dark(#f4f6fa, #0b1020);
-      --panel: light-dark(#ffffff, #131b2e);
-      --panel-2: light-dark(#eef2f8, #19243a);
-      --text: light-dark(#172033, #eef3ff);
-      --muted: light-dark(#647089, #9aa8c2);
-      --border: light-dark(#dce3ee, #2a3852);
-      --accent: light-dark(#3457e5, #8aa0ff);
-      --accent-text: light-dark(#ffffff, #0b1020);
-      --danger: light-dark(#b42336, #ff8794);
-      --success: light-dark(#16794a, #70dfaa);
-    }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-    .shell { max-width: 1120px; margin: 0 auto; padding: 32px 20px 48px; }
-    header { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 28px; }
-    .brand { display: flex; align-items: center; gap: 12px; }
-    .logo { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; color: white; background: linear-gradient(135deg, #5474ff, #8b5cf6); font-size: 21px; font-weight: 800; }
-    h1, h2, p { margin-top: 0; }
-    h1 { margin-bottom: 2px; font-size: clamp(23px, 3vw, 30px); letter-spacing: -.04em; }
-    .subtitle, .muted { color: var(--muted); }
-    .subtitle { margin: 0; font-size: 13px; }
-    .pill { padding: 6px 10px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); font-size: 12px; white-space: nowrap; }
-    .layout { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, .85fr); gap: 20px; align-items: start; }
-    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
-    .card-body { padding: 20px; }
-    .video-wrap { position: relative; background: #05070c; aspect-ratio: 16 / 9; display: grid; place-items: center; }
-    video { display: block; width: 100%; height: 100%; max-height: 66vh; background: #05070c; }
-    .video-empty { position: absolute; text-align: center; padding: 24px; color: #b7c2da; pointer-events: none; }
-    .play-icon { font-size: 36px; line-height: 1.2; margin-bottom: 10px; }
-    h2 { font-size: 16px; margin-bottom: 14px; letter-spacing: -.01em; }
-    label { display: block; font-size: 13px; font-weight: 650; margin: 14px 0 7px; }
-    input, select, button { font: inherit; }
-    input { width: 100%; min-width: 0; color: var(--text); background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 11px 12px; outline-offset: 2px; }
-    input:focus { border-color: var(--accent); outline: 2px solid color-mix(in srgb, var(--accent) 25%, transparent); }
-    .actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 14px; }
-    button, .button-link { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 13px; color: var(--text); background: var(--panel-2); font-weight: 650; cursor: pointer; text-decoration: none; }
-    button.primary { background: var(--accent); color: var(--accent-text); border-color: transparent; }
-    button:disabled { opacity: .45; cursor: not-allowed; }
-    .hint { color: var(--muted); font-size: 12px; margin: 9px 0 0; }
-    .status { margin-top: 14px; border-radius: 10px; padding: 10px 12px; background: var(--panel-2); color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
-    .status[data-kind="error"] { color: var(--danger); }
-    .status[data-kind="success"] { color: var(--success); }
-    .side-card + .side-card { margin-top: 16px; }
-    .kv { display: flex; justify-content: space-between; gap: 16px; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
-    .kv:last-child { border-bottom: 0; }
-    .kv span:first-child { color: var(--muted); }
-    .kv strong { text-align: right; overflow-wrap: anywhere; }
-    .log { height: 210px; overflow: auto; background: light-dark(#f7f9fc, #0b1120); border: 1px solid var(--border); border-radius: 10px; padding: 10px; font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
-    .log-line { margin-bottom: 5px; }
-    .log-line.error { color: var(--danger); }
-    .log-line.ok { color: var(--success); }
-    .footnote { font-size: 12px; color: var(--muted); margin: 20px 2px 0; }
-    @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } .shell { padding: 22px 14px 36px; } header { align-items: flex-start; } .pill { display: none; } }
-  </style>
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StreamDesk — HLS Player</title>
+<meta name="description" content="Browser HLS player and diagnostics for streams you are authorized to access.">
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--panel:#131b2e;--panel2:#19243a;--text:#eef3ff;--muted:#9aa8c2;--border:#2a3852;--accent:#6f86ff;--danger:#ff8794;--success:#70dfaa}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}.shell{max-width:1120px;margin:auto;padding:28px 18px 48px}header{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:20px}.brand{display:flex;gap:12px;align-items:center}.logo{display:grid;place-items:center;width:44px;height:44px;border-radius:14px;background:#5d74ff;font-weight:800;font-size:20px}h1{margin:0;font-size:28px}h2{font-size:16px;margin:0 0 12px}.subtitle,.hint,.muted{color:var(--muted)}.subtitle{margin:0;font-size:13px}.build{font-size:12px;color:var(--muted);border:1px solid var(--border);padding:6px 9px;border-radius:999px}.layout{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,.8fr);gap:18px}.card{background:var(--panel);border:1px solid var(--border);border-radius:18px;overflow:hidden}.body{padding:18px}.video{aspect-ratio:16/9;background:#05070c;position:relative}.video video{width:100%;height:100%;display:block}.empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:#b7c2da;pointer-events:none}.empty>div{max-width:420px}.play{font-size:40px}label{display:block;margin:13px 0 6px;font-size:13px;font-weight:700}input,button,select{font:inherit}input,select{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--border);background:var(--panel);color:var(--text)}.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}button{padding:10px 13px;border-radius:10px;border:1px solid var(--border);background:var(--panel2);color:var(--text);font-weight:700;cursor:pointer}button.primary{background:var(--accent);border-color:transparent}.hint{font-size:12px;margin:9px 0 0}.status{margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--panel2);color:var(--muted);overflow-wrap:anywhere}.status[data-kind=error]{color:var(--danger)}.status[data-kind=success]{color:var(--success)}.side+.side{margin-top:14px}.kv{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}.kv:last-child{border-bottom:0}.kv span{color:var(--muted)}.kv strong{text-align:right;overflow-wrap:anywhere}.log{height:240px;overflow:auto;background:#0a0f1d;border:1px solid var(--border);border-radius:10px;padding:10px;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}.log-line{margin-bottom:5px}.log-line.error{color:var(--danger)}.log-line.ok{color:var(--success)}.foot{color:var(--muted);font-size:12px;margin-top:18px}@media(max-width:800px){.layout{grid-template-columns:1fr}.shell{padding:20px 12px 36px}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"></script>
 </head>
 <body>
-  <main class="shell">
-    <header>
-      <div class="brand">
-        <div class="logo" aria-hidden="true">▶</div>
-        <div>
-          <h1>StreamDesk</h1>
-          <p class="subtitle">HLS player · stream diagnostics</p>
-        </div>
-      </div>
-      <span class="pill">Browser-based · no account</span>
-    </header>
-
-    <div class="layout">
-      <section class="card">
-        <div class="video-wrap">
-          <video id="video" controls playsinline preload="metadata" crossorigin="anonymous"></video>
-          <div class="video-empty" id="emptyState">
-            <div class="play-icon">▷</div>
-            <strong>Your stream will appear here</strong>
-            <div class="muted">Paste an authorized .m3u8 playlist below</div>
-          </div>
-        </div>
-        <div class="card-body">
-          <h2>Find a playlist from a page</h2>
-          <label for="pageUrl">Video page URL</label>
-          <input id="pageUrl" type="url" inputmode="url" placeholder="https://example.com/video/..." autocomplete="url">
-          <div class="actions">
-            <button class="primary" type="button" id="inspectBtn">🔎 Inspect page</button>
-          </div>
-          <p class="hint">The inspector only reads HTML that the browser is allowed to fetch and looks for openly exposed HLS playlist references. It does not bypass login, anti-hotlinking, signed URLs, DRM, or other access controls.</p>
-
-          <h2 style="margin-top:22px">Open a stream</h2>
-          <form id="playForm">
-            <label for="streamUrl">HLS playlist URL (.m3u8)</label>
-            <input id="streamUrl" type="url" inputmode="url" placeholder="https://example.com/path/master.m3u8" autocomplete="url" required>
-            <div class="actions">
-              <button class="primary" type="submit">▶ Play stream</button>
-              <button type="button" id="diagnoseBtn">🔎 Diagnose</button>
-              <button type="button" id="stopBtn">Stop</button>
-              <button type="button" id="clearBtn">Clear log</button>
-            </div>
-          </form>
-          <div class="status" id="status" role="status" aria-live="polite">Ready. Enter a playlist URL to begin.</div>
-          <p class="hint">Only use streams you own or have permission to access. This page does not bypass login, tokens, DRM, or source-site restrictions.</p>
-        </div>
-      </section>
-
-      <aside>
-        <section class="card side-card">
-          <div class="card-body">
-            <h2>Stream details</h2>
-            <div class="kv"><span>Playback engine</span><strong id="engine">Not started</strong></div>
-            <div class="kv"><span>Resolution</span><strong id="resolution">—</strong></div>
-            <div class="kv"><span>Duration</span><strong id="duration">—</strong></div>
-            <div class="kv"><span>Current time</span><strong id="currentTime">00:00</strong></div>
-            <div class="kv"><span>Buffered</span><strong id="buffered">—</strong></div>
-            <div class="kv"><span>Quality</span><strong id="quality">Auto</strong></div>
-            <div class="kv"><span>Playlist</span><strong id="playlistType">—</strong></div>
-            <div class="kv"><span>CORS fetch</span><strong id="corsStatus">Not tested</strong></div>
-            <div class="kv"><span>Variants</span><strong id="variantCount">—</strong></div>
-            <label for="qualitySelect">Playback quality</label>
-            <select id="qualitySelect" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--panel);color:var(--text)" disabled>
-              <option value="-1">Auto</option>
-            </select>
-          </div>
-        </section>
-
-        <section class="card side-card">
-          <div class="card-body">
-            <h2>Playlist download</h2>
-            <p class="muted" style="font-size:13px">Save the playlist text for inspection or offline use where permitted. This does not package the video segments into a single media file.</p>
-            <div class="actions">
-              <button type="button" id="downloadBtn" disabled>↓ Download .m3u8</button>
-            </div>
-            <p class="hint">Cross-origin servers may block browser downloads. Use the provider's official download option when available.</p>
-          </div>
-        </section>
-
-        <section class="card side-card">
-          <div class="card-body">
-            <h2>Diagnostics</h2>
-            <div id="log" class="log" aria-label="Stream diagnostics log"><div class="log-line">Waiting for a playlist URL…</div></div>
-          </div>
-        </section>
-      </aside>
-    </div>
-    <p class="footnote">StreamDesk is a client-side demo. Playback depends on browser codec support, CORS headers, playlist availability, and access permissions. Never paste private session tokens into a public or shared device.</p>
-  </main>
-
-  <script>
-    (() => {
-      const $ = (id) => document.getElementById(id);
-      const video = $("video");
-      const urlInput = $("streamUrl");
-      const status = $("status");
-      const logBox = $("log");
-      const qualitySelect = $("qualitySelect");
-      const downloadBtn = $("downloadBtn");
-      let hls = null;
-      let currentPlaylistUrl = "";
-      let nativeHls = false;
-
-      function log(message, kind = "") {
-        const row = document.createElement("div");
-        row.className = `log-line ${kind}`;
-        row.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-        logBox.appendChild(row);
-        logBox.scrollTop = logBox.scrollHeight;
-      }
-      function setStatus(message, kind = "") {
-        status.textContent = message;
-        status.dataset.kind = kind;
-      }
-      function fmtTime(seconds) {
-        if (!Number.isFinite(seconds) || seconds < 0) return "—";
-        const s = Math.floor(seconds);
-        const h = Math.floor(s / 3600);
-        const m = Math.floor((s % 3600) / 60);
-        const sec = s % 60;
-        return h ? `${h}:${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}` : `${m}:${String(sec).padStart(2,"0")}`;
-      }
-      function teardown() {
-        if (hls) { hls.destroy(); hls = null; }
-        video.pause();
-        video.removeAttribute("src");
-        video.load();
-        nativeHls = false;
-        $("engine").textContent = "Not started";
-        $("resolution").textContent = "—";
-        $("duration").textContent = "—";
-        $("buffered").textContent = "—";
-        $("quality").textContent = "Auto";
-        qualitySelect.innerHTML = '<option value="-1">Auto</option>';
-        qualitySelect.disabled = true;
-        downloadBtn.disabled = true;
-      }
-      function validateUrl(raw) {
-        let u;
-        try { u = new URL(raw); } catch { throw new Error("Enter a valid absolute URL."); }
-        if (!["https:", "http:"].includes(u.protocol)) throw new Error("Only HTTP(S) playlist URLs are supported.");
-        if (!/\.m3u8(?:$|[?#])/i.test(u.href)) log("URL does not end in .m3u8; attempting playback anyway.");
-        return u.href;
-      }
-      async function diagnose(raw) {
-        let url;
-        try { url = validateUrl(raw.trim()); }
-        catch (e) { setStatus(e.message, "error"); log(e.message, "error"); return; }
-        setStatus("Fetching playlist for diagnostics…");
-        log(`Diagnosing ${url}`);
-        $("corsStatus").textContent = "Testing…";
-        try {
-          const response = await fetch(url, { mode: "cors", credentials: "omit", cache: "no-store" });
-          $("corsStatus").textContent = response.ok ? "Allowed" : `HTTP ${response.status}`;
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          const text = await response.text();
-          if (!text.trimStart().startsWith("#EXTM3U")) throw new Error("Response is not an HLS playlist (#EXTM3U missing).");
-          const isMaster = /#EXT-X-STREAM-INF:/i.test(text);
-          const variants = [...text.matchAll(/#EXT-X-STREAM-INF:([^\n\r]*)[\n\r]+([^\n\r]+)/gi)].map(m => {
-            const attrs = m[1];
-            const height = (attrs.match(/RESOLUTION=\d+x(\d+)/i) || [])[1];
-            const bandwidth = (attrs.match(/(?:AVERAGE-BANDWIDTH|BANDWIDTH)=(\d+)/i) || [])[1];
-            return { height: height ? Number(height) : null, bandwidth: bandwidth ? Number(bandwidth) : null };
-          });
-          $("playlistType").textContent = isMaster ? "Master / adaptive" : "Media playlist";
-          $("variantCount").textContent = isMaster ? String(variants.length) : "1";
-          log(`HLS playlist fetched successfully; ${isMaster ? variants.length + " variant(s)" : "media playlist"}.`, "ok");
-          if (variants.length) log("Variants: " + variants.map(v => v.height ? `${v.height}p` : (v.bandwidth ? Math.round(v.bandwidth/1000) + " kbps" : "variant")).join(", "), "ok");
-          setStatus("Diagnostics complete. Playlist access succeeded; segment requests can still have separate access or CORS requirements.", "success");
-        } catch (error) {
-          $("corsStatus").textContent = "Blocked / failed";
-          $("playlistType").textContent = "Unknown";
-          $("variantCount").textContent = "—";
-          setStatus(`Diagnostics failed: ${error.message}. Common causes include CORS, authentication, expiry, or network policy.`, "error");
-          log(`Diagnostic failure: ${error.message}`, "error");
-        }
-      }
-
-      function startPlayback(raw) {
-        let url;
-        try { url = validateUrl(raw.trim()); }
-        catch (e) { setStatus(e.message, "error"); log(e.message, "error"); return; }
-        teardown();
-        currentPlaylistUrl = url;
-        $("emptyState").style.display = "none";
-        setStatus("Loading playlist…");
-        log(`Opening ${url}`);
-        downloadBtn.disabled = false;
-
-        if (window.Hls && Hls.isSupported()) {
-          hls = new Hls({ enableWorker: true, capLevelToPlayerSize: true });
-          $("engine").textContent = "hls.js";
-          hls.on(Hls.Events.MEDIA_ATTACHED, () => log("Media element attached."));
-          hls.on(Hls.Events.MANIFEST_LOADING, () => log("Requesting HLS manifest…"));
-          hls.on(Hls.Events.MANIFEST_PARSED, (_event, data) => {
-            const levels = data.levels || [];
-            qualitySelect.innerHTML = '<option value="-1">Auto</option>';
-            levels.forEach((level, index) => {
-              const option = document.createElement("option");
-              option.value = String(index);
-              option.textContent = `${level.height ? level.height + "p" : Math.round((level.bitrate || 0) / 1000) + " kbps"}${level.bitrate ? " · " + Math.round(level.bitrate / 1000) + " kbps" : ""}`;
-              qualitySelect.appendChild(option);
-            });
-            qualitySelect.disabled = levels.length === 0;
-            log(`Manifest parsed; ${levels.length} quality level(s) found.`, "ok");
-            setStatus("Playlist loaded. Press Play if playback does not start automatically.", "success");
-            if (levels[0] && levels[0].height) $("resolution").textContent = `${levels[0].height}p available`;
-            video.play().catch(() => log("Autoplay was blocked; press the video Play button."));
-          });
-          hls.on(Hls.Events.LEVEL_SWITCHED, (_event, data) => {
-            const level = hls.levels[data.level];
-            if (level) {
-              $("quality").textContent = level.height ? `${level.height}p` : `${Math.round((level.bitrate || 0) / 1000)} kbps`;
-              if (level.height) $("resolution").textContent = `${video.videoWidth || "—"} × ${video.videoHeight || level.height}`;
-            }
-          });
-          hls.on(Hls.Events.ERROR, (_event, data) => {
-            const detail = `${data.type || "unknown"} / ${data.details || "no details"}${data.response?.code ? ` (HTTP ${data.response.code})` : ""}`;
-            log(`HLS error: ${detail}${data.fatal ? " [fatal]" : ""}`, data.fatal ? "error" : "");
-            if (data.fatal) {
-              setStatus(`Playback failed: ${detail}. Check CORS, URL expiry, access permissions, and the Network tab.`, "error");
-              if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-                log("Network failure: verify the playlist and segment requests are reachable from this page.", "error");
-              } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-                log("Media failure: codec support or media corruption may be involved.", "error");
-                hls.recoverMediaError();
-              }
-            }
-          });
-          hls.loadSource(url);
-          hls.attachMedia(video);
-        } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-          nativeHls = true;
-          $("engine").textContent = "Native HLS";
-          video.src = url;
-          log("Using native browser HLS support.");
-          setStatus("Playlist assigned to native HLS player. Playback depends on source access and browser support.");
-          video.play().catch(() => log("Autoplay was blocked; press Play."));
-        } else {
-          $("engine").textContent = "Unsupported";
-          setStatus("This browser does not support HLS playback. Try a recent Safari or a browser with Media Source Extensions.", "error");
-          log("No compatible HLS playback engine found.", "error");
-        }
-      }
-
-      async function inspectPage(raw) {
-        const input = String(raw || "").trim();
-
-        if (!input) {
-          setStatus("Paste a video page URL first.", "error");
-          log("Inspect skipped: page URL is empty.", "error");
-          return;
-        }
-
-        let pageUrl;
-        try {
-          pageUrl = new URL(input);
-          if (!["http:", "https:"].includes(pageUrl.protocol)) {
-            throw new Error("Only HTTP(S) page URLs are supported.");
-          }
-        } catch (error) {
-          setStatus(error.message || "Enter a valid page URL.", "error");
-          log(error.message || "Invalid page URL.", "error");
-          return;
-        }
-
-        setStatus("Inspecting page…");
-        log("Inspecting page: " + pageUrl.href);
-        $("corsStatus").textContent = "Testing…";
-
-        try {
-          const response = await fetch(pageUrl.href, {
-            method: "GET",
-            mode: "cors",
-            credentials: "omit",
-            cache: "no-store"
-          });
-
-          if (!response.ok) throw new Error("HTTP " + response.status);
-
-          const html = await response.text();
-          if (!html.trim()) throw new Error("The page returned an empty response.");
-
-          const candidates = new Set();
-
-          function addCandidate(value) {
-            if (!value) return;
-
-            let cleaned = String(value)
-              .replace(/\\\//g, "/")
-              .replace(/&amp;/gi, "&")
-              .replace(/&quot;/gi, '"')
-              .replace(/&#x2F;/gi, "/")
-              .trim();
-
-            try {
-              const absolute = new URL(cleaned, pageUrl.href).href;
-              if (/\.m3u8(?:$|[?#])/i.test(absolute)) {
-                candidates.add(absolute);
-              }
-            } catch (_) {}
-          }
-
-          // Parse normal HTML attributes.
-          const doc = new DOMParser().parseFromString(html, "text/html");
-          doc.querySelectorAll("*").forEach((element) => {
-            for (const attr of Array.from(element.attributes)) {
-              if (/^(src|href|content|data-src|data-url|data-file|data-stream|data-playlist)$/i.test(attr.name)) {
-                addCandidate(attr.value);
-              }
-            }
-          });
-
-          // Scan the raw page for playlist URLs in inline scripts/markup.
-          const absoluteMatches = html.match(/https?:\\/\\/[^\\s"'<>]+\\.m3u8(?:[?#][^\\s"'<>]*)?/gi) || [];
-          absoluteMatches.forEach(addCandidate);
-
-          const protocolMatches = html.match(/\\/\\/[^\\s"'<>]+\\.m3u8(?:[?#][^\\s"'<>]*)?/gi) || [];
-          protocolMatches.forEach((value) => addCandidate("https:" + value));
-
-          const list = Array.from(candidates);
-
-          $("corsStatus").textContent = "Allowed";
-          $("variantCount").textContent = String(list.length);
-
-          if (!list.length) {
-            $("playlistType").textContent = "Not found";
-            setStatus("Page loaded, but no openly exposed .m3u8 URL was found.", "error");
-            log("No .m3u8 reference was found in the page HTML.", "error");
-            log("The site's player may construct the stream dynamically or keep the playlist outside the returned HTML.", "error");
-            return;
-          }
-
-          urlInput.value = list[0];
-          $("playlistType").textContent = list.length === 1
-            ? "Page-exposed URL"
-            : list.length + " page-exposed URLs";
-
-          log("Found " + list.length + " playlist reference(s).", "ok");
-          list.slice(0, 10).forEach((url, index) => {
-            log("Playlist " + (index + 1) + ": " + url);
-          });
-
-          if (list.length > 10) {
-            log("…and " + (list.length - 10) + " more.");
-          }
-
-          setStatus("Playlist found. Running playlist diagnostics…", "success");
-          await diagnose(list[0]);
-        } catch (error) {
-          $("corsStatus").textContent = "Blocked / failed";
-          $("playlistType").textContent = "Unknown";
-          $("variantCount").textContent = "—";
-          setStatus("Page inspection failed: " + (error.message || "network/CORS error"), "error");
-          log("Page inspection failed: " + (error.message || "network/CORS error"), "error");
-          log("Cross-origin page HTML can only be read when the source server permits it with CORS.", "error");
-        }
-      }
-
-      $("inspectBtn").addEventListener("click", (event) => {
-        event.preventDefault();
-        log("Inspect button clicked.");
-        inspectPage($("pageUrl").value);
-      });
-      $("pageUrl").addEventListener("keydown", (event) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          log("Inspect started from Enter key.");
-          inspectPage($("pageUrl").value);
-        }
-      });
-
-      $("diagnoseBtn").addEventListener("click", () => diagnose(urlInput.value));
-
-      $("playForm").addEventListener("submit", (event) => {
-        event.preventDefault();
-        startPlayback(urlInput.value);
-      });
-      $("stopBtn").addEventListener("click", () => {
-        teardown();
-        $("emptyState").style.display = "";
-        setStatus("Playback stopped.");
-        log("Playback stopped by user.");
-      });
-      $("clearBtn").addEventListener("click", () => { logBox.replaceChildren(); log("Log cleared."); });
-      qualitySelect.addEventListener("change", () => {
-        if (!hls) return;
-        const value = Number(qualitySelect.value);
-        hls.currentLevel = value;
-        $("quality").textContent = value === -1 ? "Auto" : qualitySelect.options[qualitySelect.selectedIndex].textContent;
-        log(value === -1 ? "Quality set to Auto." : `Quality set to ${qualitySelect.options[qualitySelect.selectedIndex].textContent}.`);
-      });
-      downloadBtn.addEventListener("click", async () => {
-        if (!currentPlaylistUrl) return;
-        try {
-          setStatus("Fetching playlist text…");
-          const response = await fetch(currentPlaylistUrl, { mode: "cors", credentials: "omit" });
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          const text = await response.text();
-          if (!text.trimStart().startsWith("#EXTM3U")) throw new Error("Response is not an HLS playlist (#EXTM3U missing).");
-          const blob = new Blob([text], { type: "application/vnd.apple.mpegurl" });
-          const objectUrl = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = objectUrl;
-          a.download = "playlist.m3u8";
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          URL.revokeObjectURL(objectUrl);
-          setStatus("Playlist downloaded. This file references stream segments; it is not a combined video file.", "success");
-          log("Playlist text downloaded.", "ok");
-        } catch (error) {
-          setStatus(`Playlist download failed: ${error.message}. The source may block cross-origin fetches (CORS).`, "error");
-          log(`Download failed: ${error.message}`, "error");
-        }
-      });
-      video.addEventListener("loadedmetadata", () => {
-        $("duration").textContent = fmtTime(video.duration);
-        if (video.videoWidth && video.videoHeight) $("resolution").textContent = `${video.videoWidth} × ${video.videoHeight}`;
-        log("Media metadata loaded.", "ok");
-      });
-      video.addEventListener("timeupdate", () => {
-        $("currentTime").textContent = fmtTime(video.currentTime);
-        if (video.buffered.length) {
-          const end = video.buffered.end(video.buffered.length - 1);
-          $("buffered").textContent = `${fmtTime(end)} buffered`;
-        }
-      });
-      video.addEventListener("playing", () => { setStatus("Playing.", "success"); log("Playback started.", "ok"); });
-      video.addEventListener("waiting", () => { setStatus("Buffering…"); log("Playback waiting for media data."); });
-      video.addEventListener("error", () => {
-        const code = video.error?.code;
-        const message = ({1:"Playback aborted.",2:"Network error.",3:"Media decoding error.",4:"Source not supported or inaccessible."})[code] || "Unknown media error.";
-        setStatus(message, "error");
-        log(message, "error");
-      });
-    })();
-  </script>
+<main class="shell">
+<header><div class="brand"><div class="logo">▶</div><div><h1>StreamDesk</h1><p class="subtitle">HLS player · diagnostics</p></div></div><span class="build" id="jsStatus">JavaScript loading…</span></header>
+<div class="layout">
+<section class="card">
+<div class="video"><video id="video" controls playsinline preload="metadata"></video><div class="empty" id="emptyState"><div><div class="play">▷</div><strong>Your stream will appear here</strong><div class="muted">Enter an authorized .m3u8 playlist below</div></div></div></div>
+<div class="body">
+<h2>Find a playlist from a page</h2>
+<label for="pageUrl">Video page URL</label>
+<input id="pageUrl" type="url" placeholder="https://example.com/video/...">
+<div class="actions"><button class="primary" id="inspectBtn" type="button">🔎 Inspect page</button></div>
+<p class="hint">The inspector can only read page HTML when the target site permits browser cross-origin access. It does not bypass login, signed URLs, DRM, anti-hotlinking, or other access controls.</p>
+<h2 style="margin-top:22px">Open a stream</h2>
+<form id="playForm">
+<label for="streamUrl">HLS playlist URL (.m3u8)</label>
+<input id="streamUrl" type="url" placeholder="https://example.com/master.m3u8" required>
+<div class="actions"><button class="primary" type="submit">▶ Play stream</button><button id="diagnoseBtn" type="button">🔎 Diagnose</button><button id="stopBtn" type="button">Stop</button><button id="clearBtn" type="button">Clear log</button></div>
+</form>
+<div class="status" id="status">Ready.</div>
+</div>
+</section>
+<aside>
+<section class="card side"><div class="body"><h2>Stream details</h2>
+<div class="kv"><span>Engine</span><strong id="engine">Not started</strong></div>
+<div class="kv"><span>Resolution</span><strong id="resolution">—</strong></div>
+<div class="kv"><span>Duration</span><strong id="duration">—</strong></div>
+<div class="kv"><span>Current time</span><strong id="currentTime">0:00</strong></div>
+<div class="kv"><span>Quality</span><strong id="quality">Auto</strong></div>
+<div class="kv"><span>Playlist</span><strong id="playlistType">—</strong></div>
+<div class="kv"><span>CORS fetch</span><strong id="corsStatus">Not tested</strong></div>
+<div class="kv"><span>Variants</span><strong id="variantCount">—</strong></div>
+<label for="qualitySelect">Playback quality</label><select id="qualitySelect" disabled><option value="-1">Auto</option></select>
+</div></section>
+<section class="card side"><div class="body"><h2>Playlist download</h2><p class="muted">Downloads playlist text only when the source permits browser access.</p><button id="downloadBtn" type="button" disabled>↓ Download .m3u8</button></div></section>
+<section class="card side"><div class="body"><h2>Diagnostics log</h2><div id="log" class="log"><div class="log-line">Starting…</div></div></div></section>
+</aside>
+</div>
+<p class="foot">Client-side only. Playback and page inspection depend on browser access controls and the source server.</p>
+</main>
+<script src="./app.js?v=20261003-1" defer></script>
 </body>
 </html>
