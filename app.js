@@ -133,11 +133,14 @@
       $("corsStatus").textContent = "Blocked / failed";
       $("playlistType").textContent = "Unknown";
       $("variantCount").textContent = "—";
-      $("pageAccessStatus").textContent = "Page access: blocked by browser cross-origin policy or network failure.";
-      setStatus("The page could not be read by this GitHub Pages app.", "error");
+      $("pageAccessStatus").textContent = "Page access: HTML read blocked by CORS/network policy; opening the page in the site browser instead.";
+      $("corsStatus").textContent = "Blocked / failed";
+      $("siteFrame").src = pageUrl.href;
+      $("browserOrigin").textContent = pageUrl.origin;
+      setStatus("HTML inspection is blocked by CORS. The page was opened in the built-in browser instead.", "error");
       log("Page inspection failed: " + (error.message || "network/CORS error"), "error");
       log("The button and JavaScript are working; the remote HTML was not exposed to this origin.", "error");
-      log("If the target server does not send an appropriate Access-Control-Allow-Origin header, browser fetch cannot expose its HTML to this app.", "error");
+      log("The built-in browser can still display the page if the site permits framing, but this app cannot read its cross-origin DOM or internal stream URL.", "error");
     }
   }
 
@@ -284,6 +287,18 @@
       log("No compatible HLS playback engine found.", "error");
     }
   }
+
+  $("openExternalBtn").addEventListener("click", () => {
+    const value = $("pageUrl").value.trim();
+    try {
+      const url = validatePageUrl(value);
+      window.open(url.href, "_blank", "noopener,noreferrer");
+      log("Opened the video page in a new tab.", "ok");
+    } catch (error) {
+      setStatus(error.message || "Enter a valid HTTP(S) page URL first.", "error");
+      log(error.message || "Enter a valid HTTP(S) page URL first.", "error");
+    }
+  });
 
   $("openPageBtn").addEventListener("click", () => {
     const value = $("pageUrl").value.trim();
