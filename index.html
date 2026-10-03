@@ -21,8 +21,9 @@
 <h2>Find a playlist from a page</h2>
 <label for="pageUrl">Video page URL</label>
 <input id="pageUrl" type="url" placeholder="https://example.com/video/...">
-<div class="actions"><button class="primary" id="inspectBtn" type="button">🔎 Inspect page</button></div>
-<p class="hint">The inspector can only read page HTML when the target site permits browser cross-origin access. It does not bypass login, signed URLs, DRM, anti-hotlinking, or other access controls.</p>
+<div class="actions"><button class="primary" id="inspectBtn" type="button">🔎 Inspect page</button><button id="openPageBtn" type="button">↗ Open page</button></div>
+<p class="hint">Inspection reads the page HTML only when the target site grants CORS access. If inspection is blocked, use Open page and paste an openly accessible <code>.m3u8</code> URL below. This tool does not bypass login, signed URLs, DRM, anti-hotlinking, or other access controls.</p>
+<div class="status" id="pageAccessStatus">Page access: not tested.</div>
 <h2 style="margin-top:22px">Open a stream</h2>
 <form id="playForm">
 <label for="streamUrl">HLS playlist URL (.m3u8)</label>
@@ -48,7 +49,7 @@
 <section class="card side"><div class="body"><h2>Diagnostics log</h2><div id="log" class="log"><div class="log-line">Starting…</div></div></div></section>
 </aside>
 </div>
-<p class="foot">Client-side only. Playback and page inspection depend on browser access controls and the source server.</p>
+<p class="foot">Client-side only. A browser can read cross-origin HTML with JavaScript only when the source server permits it with CORS. A blocked inspection does not mean the page itself is unreachable. citeturn0search1</p>
 </main>
 <script src="./app.js?v=20261003-1" defer></script>
 </body>
