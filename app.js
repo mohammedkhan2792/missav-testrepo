@@ -72,6 +72,7 @@
 
     setStatus("Inspecting page…");
     $("corsStatus").textContent = "Testing…";
+    $("pageAccessStatus").textContent = "Page access: testing CORS permission…";
     log("Inspect button clicked.");
     log("Fetching page HTML: " + pageUrl.href);
 
@@ -84,6 +85,9 @@
       });
 
       $("corsStatus").textContent = response.ok ? "Allowed" : "HTTP " + response.status;
+      $("pageAccessStatus").textContent = response.ok
+        ? "Page access: allowed. Reading HTML…"
+        : "Page access: HTTP " + response.status + ".";
 
       if (!response.ok) throw new Error("HTTP " + response.status);
 
@@ -112,6 +116,7 @@
 
       if (!list.length) {
         $("playlistType").textContent = "Not found";
+        $("pageAccessStatus").textContent = "Page access: allowed, but no .m3u8 reference found in HTML.";
         setStatus("Page loaded, but no openly exposed .m3u8 URL was found.", "error");
         log("No openly exposed .m3u8 reference found in the returned HTML.", "error");
         log("If the site's player creates the URL dynamically or requires protected access, a client-only page inspector cannot retrieve it.", "error");
@@ -128,9 +133,11 @@
       $("corsStatus").textContent = "Blocked / failed";
       $("playlistType").textContent = "Unknown";
       $("variantCount").textContent = "—";
-      setStatus("Page inspection failed: " + (error.message || "network/CORS error"), "error");
+      $("pageAccessStatus").textContent = "Page access: blocked by browser cross-origin policy or network failure.";
+      setStatus("The page could not be read by this GitHub Pages app.", "error");
       log("Page inspection failed: " + (error.message || "network/CORS error"), "error");
-      log("This usually means the target page does not allow cross-origin HTML reads from GitHub Pages.", "error");
+      log("The button and JavaScript are working; the remote HTML was not exposed to this origin.", "error");
+      log("If the target server does not send an appropriate Access-Control-Allow-Origin header, browser fetch cannot expose its HTML to this app.", "error");
     }
   }
 
@@ -209,7 +216,6 @@
     $("engine").textContent = "Not started";
     $("resolution").textContent = "—";
     $("duration").textContent = "—";
-    $("buffered").textContent = "—";
     $("quality").textContent = "Auto";
     $("qualitySelect").innerHTML = '<option value="-1">Auto</option>';
     $("qualitySelect").disabled = true;
@@ -278,6 +284,18 @@
       log("No compatible HLS playback engine found.", "error");
     }
   }
+
+  $("openPageBtn").addEventListener("click", () => {
+    const value = $("pageUrl").value.trim();
+    try {
+      const url = validatePageUrl(value);
+      window.open(url.href, "_blank", "noopener,noreferrer");
+      log("Opened page in a new tab.", "ok");
+    } catch (error) {
+      setStatus(error.message || "Enter a valid HTTP(S) page URL first.", "error");
+      log(error.message || "Enter a valid HTTP(S) page URL first.", "error");
+    }
+  });
 
   $("inspectBtn").addEventListener("click", (event) => {
     event.preventDefault();
